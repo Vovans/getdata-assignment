@@ -6,7 +6,10 @@ download.file.automatically <- FALSE
 data.file <- 'https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip'
 local.data.file <- './original-dataset.zip'
 local.data.dir <- './UCI HAR Dataset'
+tidy.data.file <- './tidy-UCI-HAR-dataset.csv'
 
+# Make sure the original data file is in the working directry, downloading
+# it if needed (and allowed)
 if (! file.exists(local.data.file)) {
     if (download.file.automatically) {
         download.file(data.file,
@@ -14,22 +17,68 @@ if (! file.exists(local.data.file)) {
     }
 }
 
+# Crash if file is not present
 if (! file.exists(local.data.file)) {
     stop(paste(local.data.file, 'must be present in working directory.'))
 }
 
+# Uncompress the original data file
 if (! file.exists(local.data.dir)) {
     unzip(local.data.file)
 }
 
+# Fail if unzip failed
 if (! file.exists(local.data.dir)) {
     stop(paste('Unable to unpack the compressed data.'))
 }
 
-acts <- read.csv(paste(res.dir, 'activity_labels.txt', sep = '/'),
-                 sep = ' ', header = FALSE)
+# Read activity labels
+acts <- read.table(paste(res.dir, 'activity_labels.txt', sep = '/'),
+                 header = FALSE)
 names(acts) <- c('id', 'name')
 
-feats <- read.csv(paste(res.dir, 'features.txt', sep = '/'),
-                 sep = ' ', header = FALSE)
-names(acts) <- c('id', 'name')
+# Read feature labels
+feats <- read.table(paste(res.dir, 'features.txt', sep = '/'),
+                 header = FALSE)
+names(feats) <- c('id', 'name')
+
+# Read the plain data files, assigning sensible column names
+train.X <- read.table(paste(res.dir, 'train', 'X_train.txt', sep = '/'),
+                      header = FALSE)
+names(train.X) <- feats$name
+train.y <- read.table(paste(res.dir, 'train', 'y_train.txt', sep = '/'),
+                      header = FALSE)
+names(train.y) <- c('activity')
+train.subject <- read.table(paste(res.dir, 'train', 'subject_train.txt',
+                                  sep = '/'),
+                            header = FALSE)
+names(train.subject) <- c('subject')
+test.X <- read.table(paste(res.dir, 'test', 'X_test.txt', sep = '/'),
+                      header = FALSE)
+names(test.X) <- feats$name
+test.y <- read.table(paste(res.dir, 'test', 'y_test.txt', sep = '/'),
+                      header = FALSE)
+names(test.y) <- c('activity')
+test.subject <- read.table(paste(res.dir, 'test', 'subject_test.txt',
+                                  sep = '/'),
+                            header = FALSE)
+names(test.subject) <- c('subject')
+
+# Merge the training and test sets
+X <- rbind(train.X, test.X)
+y <- rbind(train.y, test.y)
+subject <- rbind(train.subject, test.subject)
+
+# Extract just the mean and SD features
+# Note that this includes meanFreq()s - it's not clear whether we need those,
+# but they're easy to exlude if not needed.
+X <- X[, grep('mean|std', feats$name)]
+
+# Convert activity labels to meaningful names
+y$activity <- acts[y$activity,]$name
+
+# Marge partial data sets together
+tidy.data.set <- cbind(subject, y, X)
+
+# Dump the data set
+write.csv(tidy.data.set, tidy.data.file)

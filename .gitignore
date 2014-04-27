@@ -10,3 +10,5 @@
 .*.swp
 original-dataset.zip
 UCI HAR Dataset
+tidy-UCI-HAR-dataset.csv
+
